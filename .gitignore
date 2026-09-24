@@ -6,7 +6,16 @@ env/
 # Кэш Python
 __pycache__/
 *.pyc
+*.py[cod]
 
-# Папка настроек вашей IDE (если есть)
+# Папка настроек IDE
 .idea/
 .vscode/
+*.iml
+
+# Postman
+.postman/
+postman/
+
+# Docker
+.env
