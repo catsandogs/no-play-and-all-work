@@ -22,6 +22,7 @@ trivy-fs:
   allow_failure: true
 
 
+
 docker-build:
   stage: build
   image: docker:24.0.5-cli
