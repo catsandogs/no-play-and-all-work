@@ -1,0 +1,35 @@
+stages:
+  - test
+  - security
+  - build
+
+
+semgrep-sast:
+  stage: security
+  image: semgrep/semgrep
+  script:
+    - semgrep scan --config=p/security-audit --error
+  allow_failure: true
+
+
+trivy-fs:
+  stage: security
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs --severity HIGH,CRITICAL --exit-code 0 .
+  allow_failure: true
+
+
+docker-build:
+  stage: build
+  image: docker:24.0.5-cli
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
+  script:
+    - docker build -t calculator-api:$CI_COMMIT_SHORT_SHA .
+    - docker images
