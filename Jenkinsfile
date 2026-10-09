@@ -13,10 +13,8 @@ pipeline {
             steps {
                 echo '🔍 Запуск Semgrep: статический анализ кода...'
                 sh '''
-                    docker run --rm \
-                        -v "${WORKSPACE}:/src" \
-                        returntocorp/semgrep:latest \
-                        sh -c "semgrep scan --config=p/security-audit --no-git-ignore --error /src/main.py || true"
+                    pip3 install --quiet --break-system-packages semgrep
+                    semgrep scan --config=p/security-audit --error . || true
                 '''
             }
         }
