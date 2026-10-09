@@ -15,12 +15,13 @@ pipeline {
                 sh '''
                     docker run --rm \
                         -v "${WORKSPACE}:/src" \
+                        -w /src \
                         returntocorp/semgrep:latest \
                         semgrep scan \
                             --config=p/security-audit \
                             --no-git-ignore \
                             --error \
-                            /src || true
+                            . || true
                 '''
             }
         }
