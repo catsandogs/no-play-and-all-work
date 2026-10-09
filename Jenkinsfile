@@ -9,9 +9,10 @@ pipeline {
             }
         }
 
+
         stage('2. Security: SAST (Semgrep)') {
             steps {
-                echo '🔍 Запуск Semgrep: статический анализ кода...'
+                echo ' Запуск Semgrep: статический анализ кода...'
                 sh '''
                     pip3 install --quiet --break-system-packages semgrep
                     semgrep scan --config=p/security-audit --error . || true
