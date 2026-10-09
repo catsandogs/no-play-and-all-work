@@ -20,6 +20,7 @@ pipeline {
                         semgrep scan \
                             --config=p/security-audit \
                             --no-git-ignore \
+                            --verbose \
                             --error \
                             . || true
                 '''
