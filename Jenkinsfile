@@ -16,7 +16,11 @@ pipeline {
                     docker run --rm \
                         -v "${WORKSPACE}:/src" \
                         returntocorp/semgrep:latest \
-                        semgrep scan --config=p/security-audit --error /src || true
+                        semgrep scan \
+                            --config=p/security-audit \
+                            --no-git-ignore \
+                            --error \
+                            /src || true
                 '''
             }
         }
