@@ -2,22 +2,23 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "calculator-api"
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
-        CONTAINER_NAME = "calculator-prod"
+        image = "calculator-api"
+        container = "calculator-prod"
+        tag = "${env.BUILD_NUMBER}"
     }
 
     stages {
-        stage('1. Checkout') {
+        stage('1. checkout') {
             steps {
-                echo "Загрузка кода из репозитория..."
+                echo 'загрузка кода из репозитория'
                 checkout scm
+                sh 'ls -la'
             }
         }
 
-        stage('2. Security: SAST (Semgrep)') {
+        stage('2. semgrep') {
             steps {
-                echo 'Запуск Semgrep: статический анализ кода...'
+                echo 'статический анализ кода'
                 sh '''
                     pip3 install --quiet --break-system-packages semgrep
                     semgrep scan --config=p/security-audit --error . || true
@@ -25,9 +26,9 @@ pipeline {
             }
         }
 
-        stage('3. Security: SCA (Trivy FS)') {
+        stage('3. trivy fs') {
             steps {
-                echo 'Сканирование зависимостей (requirements.txt)...'
+                echo 'сканирование зависимостей'
                 sh '''
                     docker run --rm \
                         -v "${WORKSPACE}:/src" \
@@ -38,72 +39,37 @@ pipeline {
             }
         }
 
-        stage('4. Docker Build') {
+        stage('4. docker build') {
             steps {
-                echo "Сборка Docker-образа версии ${IMAGE_TAG}..."
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                sh "docker images ${IMAGE_NAME}"
+                echo "сборка образа версии ${tag}"
+                sh "docker build -t ${image}:${tag} -t ${image}:latest ."
+                sh "docker images ${image}"
             }
         }
 
-        stage('5. Security: Container Scan (Trivy Image)') {
+        stage('5. trivy image') {
             steps {
-                echo 'Сканирование собранного Docker-образа...'
+                echo 'сканирование собранного образа'
                 sh '''
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         aquasec/trivy:latest \
-                        image --severity HIGH,CRITICAL ${IMAGE_NAME}:latest || true
+                        image --severity HIGH,CRITICAL calculator-api:latest || true
                 '''
             }
         }
 
-                stage('6. Deploy (Rotation)') {
+        stage('6. deploy') {
             steps {
-                echo 'Обновление приложения (перезапуск контейнера)...'
+                echo 'перезапуск контейнера'
                 sh '''
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm ${CONTAINER_NAME} || true
-
-                    docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:latest
-
-                    echo "Ожидание запуска приложения..."
-                    SUCCESS=0
-
-                    # Перебираем все возможные варианты адресов
-                    for HOST in "127.0.0.1" "0.0.0.0" "172.17.0.1" "host.docker.internal" "localhost"; do
-                        echo "--- Пробуем подключиться к $HOST ---"
-                        for i in $(seq 1 5); do
-                            # Используем -s (тихий режим) и -f (падать при ошибке HTTP)
-                            if curl -sf http://$HOST:8000/health > /dev/null; then
-                                echo "✅ УСПЕХ! Приложение ответило по адресу $HOST:8000"
-                                SUCCESS=1
-                                break 2
-                            fi
-                            echo "Попытка $i к $HOST... ждем 1 секунду"
-                            sleep 1
-                        done
-                    done
-
-                    if [ "$SUCCESS" -eq 0 ]; then
-                        echo "❌ Healthcheck failed: ни один из адресов не ответил"
-                        echo "Логи контейнера:"
-                        docker logs ${CONTAINER_NAME}
-                        exit 1
-                    fi
-
-                    echo "✅ Деплой успешно завершен."
+                    docker stop ${container} || true
+                    docker rm ${container} || true
+                    docker run -d --name ${container} -p 8000:8000 ${image}:latest
+                    sleep 5
+                    curl -sf http://172.17.0.1:8000/health || (docker logs ${container} && exit 1)
                 '''
             }
-        }
-    }
-
-    post {
-        success {
-            echo "Пайплайн #${env.BUILD_NUMBER} успешно завершён."
-        }
-        failure {
-            echo "Сборка #${env.BUILD_NUMBER} провалилась. Смотрите логи."
         }
     }
 }
