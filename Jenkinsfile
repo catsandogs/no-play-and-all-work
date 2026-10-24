@@ -58,27 +58,41 @@ pipeline {
             }
         }
 
-        stage('6. Deploy (Rotation)') {
+                stage('6. Deploy (Rotation)') {
             steps {
                 echo 'Обновление приложения (перезапуск контейнера)...'
                 sh '''
                     docker stop ${CONTAINER_NAME} || true
                     docker rm ${CONTAINER_NAME} || true
+
                     docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:latest
 
                     echo "Ожидание запуска приложения..."
-                    for i in $(seq 1 15); do
-                        if curl -s http://calculator-prod:8000/health > /dev/null; then
-                            echo "Приложение успешно запустилось!"
-                            exit 0
-                        fi
-                        echo "Попытка $i из 15... ждем 1 секунду"
-                        sleep 1
+                    SUCCESS=0
+
+                    # Перебираем все возможные варианты адресов
+                    for HOST in "127.0.0.1" "0.0.0.0" "172.17.0.1" "host.docker.internal" "localhost"; do
+                        echo "--- Пробуем подключиться к $HOST ---"
+                        for i in $(seq 1 5); do
+                            # Используем -s (тихий режим) и -f (падать при ошибке HTTP)
+                            if curl -sf http://$HOST:8000/health > /dev/null; then
+                                echo "✅ УСПЕХ! Приложение ответило по адресу $HOST:8000"
+                                SUCCESS=1
+                                break 2
+                            fi
+                            echo "Попытка $i к $HOST... ждем 1 секунду"
+                            sleep 1
+                        done
                     done
 
-                    echo "Healthcheck failed: приложение не ответило за 15 секунд"
-                    docker logs ${CONTAINER_NAME}
-                    exit 1
+                    if [ "$SUCCESS" -eq 0 ]; then
+                        echo "❌ Healthcheck failed: ни один из адресов не ответил"
+                        echo "Логи контейнера:"
+                        docker logs ${CONTAINER_NAME}
+                        exit 1
+                    fi
+
+                    echo "✅ Деплой успешно завершен."
                 '''
             }
         }
