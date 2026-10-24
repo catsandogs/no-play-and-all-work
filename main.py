@@ -46,3 +46,7 @@ def calculate(data: CalculationRequest):
         status_code=400,
         detail=f"Unknown operation '{data.operation}'. Use: add, sub, mul, div."
     )
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": app.version}
