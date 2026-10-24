@@ -1,18 +1,23 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "calculator-api"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        CONTAINER_NAME = "calculator-prod"
+    }
+
     stages {
         stage('1. Checkout') {
             steps {
+                echo "Загрузка кода из репозитория..."
                 checkout scm
-                sh 'ls -la'
             }
         }
 
-
         stage('2. Security: SAST (Semgrep)') {
             steps {
-                echo ' Запуск Semgrep: статический анализ кода...'
+                echo 'Запуск Semgrep: статический анализ кода...'
                 sh '''
                     pip3 install --quiet --break-system-packages semgrep
                     semgrep scan --config=p/security-audit --error . || true
@@ -20,11 +25,59 @@ pipeline {
             }
         }
 
-        stage('3. Docker Check') {
+        stage('3. Security: SCA (Trivy FS)') {
             steps {
-                sh 'docker --version'
-                sh 'echo "Hello from Jenkins!"'
+                echo 'Сканирование зависимостей (requirements.txt)...'
+                sh '''
+                    docker run --rm \
+                        -v "${WORKSPACE}:/src" \
+                        -w /src \
+                        aquasec/trivy:latest \
+                        fs --severity HIGH,CRITICAL . || true
+                '''
             }
+        }
+
+        stage('4. Docker Build') {
+            steps {
+                echo "Сборка Docker-образа версии ${IMAGE_TAG}..."
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+                sh "docker images ${IMAGE_NAME}"
+            }
+        }
+
+        stage('5. Security: Container Scan (Trivy Image)') {
+            steps {
+                echo 'Сканирование собранного Docker-образа...'
+                sh '''
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest \
+                        image --severity HIGH,CRITICAL ${IMAGE_NAME}:latest || true
+                '''
+            }
+        }
+
+        stage('6. Deploy (Rotation)') {
+            steps {
+                echo 'Обновление приложения (перезапуск контейнера)...'
+                sh '''
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
+                    docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:latest
+                    sleep 3
+                    curl -f http://localhost:8000/health || (echo "Healthcheck failed" && exit 1)
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Пайплайн #${env.BUILD_NUMBER} успешно завершён. Новая версия развернута на порту 8000."
+        }
+        failure {
+            echo "❌ Сборка #${env.BUILD_NUMBER} провалилась. Смотрите логи."
         }
     }
 }
