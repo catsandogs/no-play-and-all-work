@@ -68,7 +68,7 @@ pipeline {
 
                     echo "Ожидание запуска приложения..."
                     for i in $(seq 1 15); do
-                        if curl -s http://localhost:8000/health > /dev/null; then
+                        if curl -s http://calculator-prod:8000/health > /dev/null; then
                             echo "Приложение успешно запустилось!"
                             exit 0
                         fi
