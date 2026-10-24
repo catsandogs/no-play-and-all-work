@@ -65,8 +65,20 @@ pipeline {
                     docker stop ${CONTAINER_NAME} || true
                     docker rm ${CONTAINER_NAME} || true
                     docker run -d --name ${CONTAINER_NAME} -p 8000:8000 ${IMAGE_NAME}:latest
-                    sleep 3
-                    curl -f http://localhost:8000/health || (echo "Healthcheck failed" && exit 1)
+
+                    echo "Ожидание запуска приложения..."
+                    for i in $(seq 1 15); do
+                        if curl -s http://localhost:8000/health > /dev/null; then
+                            echo "Приложение успешно запустилось!"
+                            exit 0
+                        fi
+                        echo "Попытка $i из 15... ждем 1 секунду"
+                        sleep 1
+                    done
+
+                    echo "Healthcheck failed: приложение не ответило за 15 секунд"
+                    docker logs ${CONTAINER_NAME}
+                    exit 1
                 '''
             }
         }
@@ -74,10 +86,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Пайплайн #${env.BUILD_NUMBER} успешно завершён. Новая версия развернута на порту 8000."
+            echo "Пайплайн #${env.BUILD_NUMBER} успешно завершён."
         }
         failure {
-            echo "❌ Сборка #${env.BUILD_NUMBER} провалилась. Смотрите логи."
+            echo "Сборка #${env.BUILD_NUMBER} провалилась. Смотрите логи."
         }
     }
 }
