@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>DevSecOps Calculator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="calculator">
+        <h1>Calculator</h1>
+        <p class="version">Version 1.0.0</p>
+
+        <div class="inputs">
+            <input type="number" id="num1" placeholder="Число 1">
+            <input type="number" id="num2" placeholder="Число 2">
+        </div>
+
+        <div class="buttons">
+            <button onclick="calculate('add')">+</button>
+            <button onclick="calculate('sub')">-</button>
+            <button onclick="calculate('mul')">*</button>
+            <button onclick="calculate('div')">/</button>
+        </div>
+
+        <div id="result" class="result">Результат: </div>
+    </div>
+
+    <script>
+        async function calculate(op) {
+            const num1 = parseFloat(document.getElementById('num1').value);
+            const num2 = parseFloat(document.getElementById('num2').value);
+            const resultDiv = document.getElementById('result');
+
+            if (isNaN(num1) || isNaN(num2)) {
+                resultDiv.innerText = 'Ошибка: введите числа';
+                resultDiv.style.color = '#ff4444';
+                return;
+            }
+
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ num1: num1, num2: num2, operation: op })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                resultDiv.innerText = 'Результат: ' + data.result;
+                resultDiv.style.color = '#00C851';
+            } else {
+                resultDiv.innerText = 'Ошибка: ' + data.detail;
+                resultDiv.style.color = '#ff4444';
+            }
+        }
+    </script>
+</body>
+</html>

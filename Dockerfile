@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 COPY main.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
 EXPOSE 8000
 
 # Setup an app user so the container doesn't run as the root user

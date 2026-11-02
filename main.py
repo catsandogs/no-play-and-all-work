@@ -1,4 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 # Создаем экземпляр приложения и задаем понятное название для Swagger
@@ -8,19 +11,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-# Описываем схему входных данных с помощью Pydantic.
-# Это автоматически защищает API от отправки строк вместо чисел.
+# описываем схему входных данных с помощью Pydantic. это автоматически защищает API от отправки строк вместо чисел.
 class CalculationRequest(BaseModel):
     num1: float = Field(..., description="Первое число (дробное или целое)")
     num2: float = Field(..., description="Второе число (дробное или целое)")
     operation: str = Field(..., description="Операция: add, sub, mul, div")
 
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-# Главный эндпоинт для расчетов
+
 @app.post("/calculate", summary="Выполнить математическую операцию")
 def calculate(data: CalculationRequest):
-    # Приводим к нижнему регистру, чтобы избежать ошибок регистра
     op = data.operation.lower().strip()
 
     if op == "add":
@@ -33,7 +39,6 @@ def calculate(data: CalculationRequest):
         return {"result": data.num1 * data.num2}
 
     elif op == "div":
-        # DevSecOps-практика: явная обработка критических ошибок (деление на ноль)
         if data.num2 == 0:
             raise HTTPException(
                 status_code=400,
