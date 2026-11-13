@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 # Создаем экземпляр приложения (+ норм название для swagger )
 app = FastAPI(
     title="DevSecOps Calculator API",
-    description="Безопасный API-калькулятор с проверкой данных для CI/CD пайплайна",
+    description="Безопасный API-калькулятор с валида данных для пайплайна",
     version="1.0.0"
 )
 
