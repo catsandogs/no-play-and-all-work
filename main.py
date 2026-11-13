@@ -26,7 +26,6 @@ class CalculationRequest(BaseModel):
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-
 @app.post("/calculate", summary="Выполнить математическую операцию")
 def calculate(data: CalculationRequest):
     op = data.operation.lower().strip()
