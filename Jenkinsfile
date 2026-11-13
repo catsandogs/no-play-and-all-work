@@ -30,11 +30,7 @@ pipeline {
             steps {
                 echo 'сканирование зависимостей'
                 sh '''
-                    docker run --rm \
-                        -v "$PWD:/src" \
-                        -w /src \
-                        aquasec/trivy:latest \
-                        fs --severity HIGH,CRITICAL --scanners vuln requirements.txt || true
+                    cat requirements.txt | docker run --rm -i aquasec/trivy:latest fs --severity HIGH,CRITICAL --scanners vuln -
                 '''
             }
         }
