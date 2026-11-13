@@ -7,20 +7,18 @@ from pydantic import BaseModel, Field
 # Создаем экземпляр приложения (+ норм название для swagger)
 app = FastAPI(
     title="DevSecOps Calculator API",
-    description="Безопасный API-калькулятор с валида данных для ПП .",
+    description="Безопасный API-калькулятор с валида данных для ПП",
     version="1.0.0"
 )
-
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# описываем схему входных данных с Pydantic. это автоматически защищает API от отправки строк вместо чисел.
+# описываем схему входных данных с помощью Pydantic. это автоматически защищает API от отправки строк вместо чисел.
 class CalculationRequest(BaseModel):
     num1: float = Field(..., description="Первое число (дробное или целое)")
     num2: float = Field(..., description="Второе число (дробное или целое)")
     operation: str = Field(..., description="Операция: add, sub, mul, div")
-
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
