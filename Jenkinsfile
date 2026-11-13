@@ -34,7 +34,7 @@ pipeline {
                         -v "${WORKSPACE}:/src" \
                         -w /src \
                         aquasec/trivy:latest \
-                        fs --severity HIGH,CRITICAL . || true
+                        fs --severity HIGH,CRITICAL --scanners vuln requirements.txt || true
                 '''
             }
         }

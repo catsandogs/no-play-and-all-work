@@ -4,10 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-# Создаем экземпляр приложения и задаем понятное название для Swagger
+# Создаем экземпляр приложения (+ норм название для swagger )
 app = FastAPI(
     title="DevSecOps Calculator API",
-    description="Безопасный API-калькулятор с валидацией для CI/CD пайплайна",
+    description="Безопасный API-калькулятор с проверкой данных для CI/CD пайплайна",
     version="1.0.0"
 )
 
