@@ -52,14 +52,34 @@ Swagger UI: http://localhost:8000/docs
 ## Результаты сканирования
 
 ### Semgrep (SAST)
+
     Ran 87 rules on 10 files: 0 findings.
 
 Проверены файлы: `main.py`, `Dockerfile`, `templates/index.html`, `static/style.css`.
 Уязвимостей не обнаружено. Код не содержит `eval()`, SQL-инъекций, хардкод-паролей, небезопасных `subprocess`.
 
+### Trivy FS (SCA)
+
+    requirements.txt (pip)
+    Total: 45 (HIGH: 41, CRITICAL: 4)
+
+Для проверки работоспособности SCA-сканера в `requirements.txt` были временно добавлены уязвимые версии библиотек. Trivy FS успешно обнаружил:
+
+| Компонент | CVE | Severity | Описание |
+|-----------|-----|----------|----------|
+| Pillow 10.2.0 | CVE-2026-112900 | CRITICAL | Argument Injection в Ghostscript, ведущий к RCE |
+| Pillow 10.2.0 | CVE-2026-112393 | CRITICAL | Heap buffer overflow при сохранении TIFF |
+| Pillow 10.2.0 | CVE-2026-112398 | CRITICAL | Heap buffer overflow в FlashPix (FPX) JPEG |
+| Pillow 10.2.0 | CVE-2026-112403 | CRITICAL | Heap buffer overflow в ImagingJpegDecode |
+| urllib3 1.26.0 | CVE-2021-33503 | HIGH | ReDoS в парсинге URL |
+| Werkzeug 3.0.1 | CVE-2024-34069 | HIGH | Выполнение кода на машине разработчика |
+
+*(После проверки уязвимые зависимости были удалены из финальной версии `requirements.txt`).*
+
 ### Trivy Image (Container Scan)
+
     calculator-api:latest (debian 13.7)
-    Total: 45 (HIGH: 45, CRITICAL: 0)
+    Total: 49 (HIGH: 49, CRITICAL: 0)
 
     Python (python-pkg)
     Total: 3 (HIGH: 3, CRITICAL: 0)
@@ -71,17 +91,19 @@ Swagger UI: http://localhost:8000/docs
 | starlette 0.38.6 | CVE-2024-47874 | HIGH | DoS через `multipart/form-data` | 0.40.0 |
 | starlette 0.38.6 | CVE-2026-48818 | HIGH | SSRF и кража NTLM-учётных данных через UNC-пути | 1.1.0 |
 | starlette 0.38.6 | CVE-2026-54283 | HIGH | DoS через `application/x-www-form-urlencoded` | 1.3.1 |
-| debian (системные пакеты) | — | HIGH | 45 уязвимостей в `util-linux`, `systemd`, `ncurses`, `sqlite`, `perl` | обновление базового образа |
+| debian (системные пакеты) | — | HIGH | 49 уязвимостей в `util-linux`, `systemd`, `ncurses`, `sqlite`, `zlib`, `perl` | обновление базового образа |
 
 ## Анализ и рекомендации
 
-**Semgrep** подтверждает: исходный код приложения безопасен. Разработчик не использует опасные функции и корректно работает с пользовательским вводом через Pydantic.
+**Semgrep (SAST)** подтверждает: исходный код приложения безопасен. Разработчик не использует опасные функции и корректно работает с пользовательским вводом через Pydantic.
 
-**Trivy** выявляет уязвимости в цепочке поставок (Supply Chain):
-1. **Библиотека `starlette 0.38.6`** — подтягивается транзитивно через `fastapi 0.115.0`. Содержит 3 HIGH-уязвимости, включая критичную DoS (CVE-2024-47874).
-2. **Базовый образ `python:3.12-slim` (Debian 13.7)** — содержит 45 HIGH-уязвимостей в системных пакетах, которые не видны при анализе исходников.
+**Trivy (SCA + Container Scan)** выявляет уязвимости в цепочке поставок (Supply Chain):
 
-**Вывод:** безопасный код — не гарантия безопасности приложения. Уязвимости приходят из зависимостей и базового образа. Это подтверждает необходимость комплексного подхода DevSecOps: SAST (Semgrep) + SCA + Container Scan (Trivy).
+1. **Прямые зависимости** (Trivy FS): при добавлении уязвимых версий `Pillow`, `urllib3`, `Werkzeug` сканер обнаружил 45 уязвимостей (41 HIGH, 4 CRITICAL). Это доказывает, что Trivy FS корректно анализирует `requirements.txt` до сборки образа.
+2. **Транзитивные зависимости** (Trivy Image): библиотека `starlette 0.38.6` подтягивается через `fastapi 0.115.0` и содержит 3 HIGH-уязвимости (DoS, SSRF).
+3. **Базовый образ** (Trivy Image): `python:3.12-slim` (Debian 13.7) содержит 49 HIGH-уязвимостей в системных пакетах, которые не видны при анализе исходников.
+
+**Вывод:** безопасный код — не гарантия безопасности приложения. Уязвимости приходят из зависимостей и базового образа. Это подтверждает необходимость комплексного подхода DevSecOps: SAST (Semgrep) + SCA (Trivy FS) + Container Scan (Trivy Image).
 
 **Рекомендации по устранению:**
 
