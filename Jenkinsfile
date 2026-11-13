@@ -30,11 +30,7 @@ pipeline {
             steps {
                 echo 'сканирование зависимостей'
                 sh '''
-                    docker run --rm \
-                        --entrypoint sh \
-                        -v "${WORKSPACE}:/app" \
-                        aquasec/trivy:latest \
-                        -c "cp /app/requirements.txt /tmp/ && trivy fs --severity HIGH,CRITICAL --scanners vuln /tmp/requirements.txt || true"
+                    docker run --rm --entrypoint sh -v "${WORKSPACE}:/app" aquasec/trivy:latest -c 'cp /app/requirements.txt /tmp/ && trivy fs --severity HIGH,CRITICAL --scanners vuln /tmp/requirements.txt || true'
                 '''
             }
         }
