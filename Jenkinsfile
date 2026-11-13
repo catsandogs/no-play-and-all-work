@@ -28,12 +28,18 @@ pipeline {
 
         stage('3. trivy fs') {
             steps {
-                echo 'сканирование зависимостей'
-                sh '''
-                    docker run --rm --entrypoint sh -v "${WORKSPACE}:/app" aquasec/trivy:latest -c 'cp /app/requirements.txt /tmp/ && trivy fs --severity HIGH,CRITICAL --scanners vuln /tmp/requirements.txt || true'
-                '''
+                    echo 'Сканирование зависимостей'
+                    sh '''
+                        cat requirements.txt | docker run --rm -i \
+                            aquasec/trivy:latest fs \
+                            --severity HIGH,CRITICAL \
+                            --scanners vuln \
+                            --input - || true
+                    '''
+                }
             }
-        }
+
+
 
         stage('4. docker build') {
             steps {
